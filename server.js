@@ -23,6 +23,9 @@ connectDB();
 
 const app = express();
 
+// Trust Proxy for Render/Vercel
+app.set('trust proxy', 1);
+
 // Security & Performance Middleware
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow images to be loaded from other origins if needed
