@@ -1,6 +1,6 @@
 const Category = require('../models/Category');
 const Product = require('../models/Product');
-const { cloudinary } = require('../config/cloudinary');
+const cloudinary = require('../config/cloudinary');
 
 exports.getAll = async (req, res) => {
     try {

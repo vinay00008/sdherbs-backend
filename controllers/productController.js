@@ -1,5 +1,6 @@
 const Product = require('../models/Product');
-const { cloudinary } = require('../config/cloudinary');
+const cloudinary = require('../config/cloudinary');
+const fs = require('fs');
 
 exports.getAll = async (req, res) => {
   try {
@@ -17,17 +18,17 @@ exports.getAll = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    console.log("Create Product Request Body:", req.body);
-    console.log("Create Product File:", req.file);
-    console.log("Create Product Headers:", req.headers['content-type']);
-
     const { name, description, price, stock, category } = req.body;
 
     // Handle image upload
     let images = [];
     if (req.file) {
-      // Cloudinary returns the path in req.file.path
-      images.push(req.file.path);
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "sdherbs/products"
+      });
+      images.push(result.secure_url);
+      // Clean up local file
+      fs.unlinkSync(req.file.path);
     }
 
     const newProduct = new Product({
@@ -40,19 +41,16 @@ exports.create = async (req, res) => {
     });
 
     const savedProduct = await newProduct.save();
-    console.log("Saved Product:", savedProduct);
     res.status(201).json(savedProduct);
   } catch (err) {
     console.error("Error creating product:", err);
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     res.status(500).json({ message: err.message });
   }
 };
 
 exports.update = async (req, res) => {
   try {
-    console.log("Update Product Request Body:", req.body);
-    console.log("Update Product File:", req.file);
-
     const { id } = req.params;
     const { name, description, price, stock, category } = req.body;
 
@@ -65,14 +63,18 @@ exports.update = async (req, res) => {
     };
 
     if (req.file) {
-      updateData.images = [req.file.path];
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "sdherbs/products"
+      });
+      updateData.images = [result.secure_url];
+      fs.unlinkSync(req.file.path);
     }
 
     const updatedProduct = await Product.findByIdAndUpdate(id, updateData, { new: true });
-    console.log("Updated Product Result:", updatedProduct);
     res.json(updatedProduct);
   } catch (err) {
     console.error("Error updating product:", err);
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     res.status(500).json({ message: err.message });
   }
 };
@@ -86,11 +88,8 @@ exports.remove = async (req, res) => {
     if (product.images && product.images.length > 0) {
       const imageUrl = product.images[0];
       // Extract public_id from URL
-      // Example: https://res.cloudinary.com/demo/image/upload/v1570979139/folder/sample.jpg
-      // Public ID: folder/sample
       const publicId = imageUrl.split('/').slice(-2).join('/').split('.')[0];
 
-      // We need to handle both local uploads (old) and Cloudinary uploads (new)
       if (imageUrl.includes('cloudinary')) {
         await cloudinary.uploader.destroy(publicId);
       }

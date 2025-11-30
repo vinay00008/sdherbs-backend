@@ -1,4 +1,6 @@
 const Event = require("../models/Event");
+const cloudinary = require('../config/cloudinary');
+const fs = require('fs');
 
 // 🟢 Create new Event
 exports.createEvent = async (req, res) => {
@@ -7,14 +9,24 @@ exports.createEvent = async (req, res) => {
 
     // ✅ Basic validation
     if (!title) {
+      if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       return res.status(400).json({ error: "Title is required" });
+    }
+
+    let image = null;
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "sdherbs/events"
+      });
+      image = result.secure_url;
+      fs.unlinkSync(req.file.path);
     }
 
     const newEvent = new Event({
       title,
       description,
       date,
-      image: req.file ? `/uploads/${req.file.filename}` : null,
+      image,
     });
 
     await newEvent.save();
@@ -24,6 +36,7 @@ exports.createEvent = async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Error creating event:", err);
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     res.status(500).json({ error: err.message });
   }
 };
@@ -43,8 +56,17 @@ exports.getEvents = async (req, res) => {
 exports.updateEvent = async (req, res) => {
   try {
     const { id } = req.params;
+    const data = req.body;
 
-    const updatedEvent = await Event.findByIdAndUpdate(id, req.body, {
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "sdherbs/events"
+      });
+      data.image = result.secure_url;
+      fs.unlinkSync(req.file.path);
+    }
+
+    const updatedEvent = await Event.findByIdAndUpdate(id, data, {
       new: true,
     });
 
@@ -58,6 +80,7 @@ exports.updateEvent = async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Error updating event:", err);
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     res.status(500).json({ error: err.message });
   }
 };
@@ -67,11 +90,15 @@ exports.deleteEvent = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const deletedEvent = await Event.findByIdAndDelete(id);
+    const event = await Event.findById(id);
+    if (!event) return res.status(404).json({ error: "Event not found" });
 
-    if (!deletedEvent) {
-      return res.status(404).json({ error: "Event not found" });
+    if (event.image && event.image.includes('cloudinary')) {
+      const publicId = event.image.split('/').slice(-2).join('/').split('.')[0];
+      await cloudinary.uploader.destroy(publicId);
     }
+
+    await Event.findByIdAndDelete(id);
 
     res.status(200).json({ message: "🗑️ Event deleted successfully" });
   } catch (err) {
