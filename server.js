@@ -62,6 +62,7 @@ app.use('/api/chat-trainer', require('./routes/chatTrainerRoutes'));
 app.use('/api/page-content', require('./routes/pageContentRoutes'));
 app.use('/api/upload', require('./routes/uploadRoutes'));
 app.use('/api/settings', require('./routes/settingsRoutes'));
+app.use('/api/voice', require('./routes/elevenlabsRoutes'));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
