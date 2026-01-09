@@ -20,7 +20,7 @@ const upload = multer({ storage });
 // 🌿 Routes
 router.post("/", upload.single("image"), createEvent);
 router.get("/", getEvents);
-router.put("/:id", updateEvent);
+router.put("/:id", upload.single("image"), updateEvent);
 router.delete("/:id", deleteEvent);
 router.patch("/:id/toggle", toggleVisibility);
 

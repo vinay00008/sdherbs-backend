@@ -82,9 +82,10 @@ const updateActivity = async (req, res) => {
         const activity = await Activity.findById(req.params.id);
         if (!activity) return res.status(404).json({ message: "Activity not found" });
 
-        activity.title = title || activity.title;
-        activity.description = description || activity.description;
-        activity.fitMode = fitMode || activity.fitMode;
+        // Update fields - allow empty strings to clear values
+        if (title !== undefined) activity.title = title;
+        if (description !== undefined) activity.description = description;
+        if (fitMode !== undefined) activity.fitMode = fitMode;
 
         // upload new photos (if any)
         if (req.files && req.files.length > 0) {
@@ -117,7 +118,7 @@ const updateActivity = async (req, res) => {
 const deleteActivityPhoto = async (req, res) => {
     try {
         const { id } = req.params;
-        const { publicId } = req.body; // Expect publicId in body for safety
+        const { publicId } = req.body;
 
         if (!publicId) return res.status(400).json({ message: "Public ID is required" });
 
@@ -128,7 +129,7 @@ const deleteActivityPhoto = async (req, res) => {
         try {
             await cloudinary.uploader.destroy(publicId);
         } catch (err) {
-            console.log("Cloudinary deletion failed:", publicId);
+            console.error("Cloudinary deletion failed for:", publicId, err);
         }
 
         // remove from DB list
@@ -150,8 +151,18 @@ const deleteActivity = async (req, res) => {
         const activity = await Activity.findById(req.params.id);
         if (!activity) return res.status(404).json({ message: "Activity not found" });
 
-        for (const photo of activity.photos) {
-            await cloudinary.uploader.destroy(photo.publicId);
+        // Attempt to delete all photos from Cloudinary
+        if (activity.photos && activity.photos.length > 0) {
+            for (const photo of activity.photos) {
+                if (photo.publicId) {
+                    try {
+                        await cloudinary.uploader.destroy(photo.publicId);
+                    } catch (cloudErr) {
+                        console.error(`Failed to delete image ${photo.publicId} from Cloudinary:`, cloudErr);
+                        // Continue deleting the activity even if image deletion fails
+                    }
+                }
+            }
         }
 
         await Activity.findByIdAndDelete(req.params.id);

@@ -42,7 +42,7 @@ app.use('/api', limiter);
 
 // Middlewares
 app.use(cors({
-    origin: ["https://sdherbs-frontend-git-main-vinay-patidars-projects-5905dd1b.vercel.app", "http://localhost:3000", "http://localhost:5173"],
+    origin: [process.env.CLIENT_URL, "http://localhost:3000", "http://localhost:5173"],
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true

@@ -45,4 +45,24 @@ router.delete('/knowledge/:id', async (req, res) => {
     }
 });
 
+// Delete single chat log
+router.delete('/logs/:id', async (req, res) => {
+    try {
+        await ChatLog.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Log deleted' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Clear all chat logs
+router.delete('/logs', async (req, res) => {
+    try {
+        await ChatLog.deleteMany({});
+        res.json({ message: 'All logs cleared' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

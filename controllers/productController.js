@@ -1,6 +1,5 @@
 const Product = require('../models/Product');
 const cloudinary = require('../config/cloudinary');
-const fs = require('fs');
 
 exports.getAll = async (req, res) => {
   try {
@@ -21,14 +20,10 @@ exports.create = async (req, res) => {
     const { name, description, price, stock, category } = req.body;
 
     // Handle image upload
+    // Since we use multer-storage-cloudinary, req.file.path IS the Cloudinary URL.
     let images = [];
-    if (req.file) {
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "sdherbs/products"
-      });
-      images.push(result.secure_url);
-      // Clean up local file
-      fs.unlinkSync(req.file.path);
+    if (req.file && req.file.path) {
+      images.push(req.file.path);
     }
 
     const newProduct = new Product({
@@ -44,7 +39,7 @@ exports.create = async (req, res) => {
     res.status(201).json(savedProduct);
   } catch (err) {
     console.error("Error creating product:", err);
-    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    // No need to unlink manually as Cloudinary storage handles it or it's not on disk
     res.status(500).json({ message: err.message });
   }
 };
@@ -62,19 +57,14 @@ exports.update = async (req, res) => {
       category
     };
 
-    if (req.file) {
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "sdherbs/products"
-      });
-      updateData.images = [result.secure_url];
-      fs.unlinkSync(req.file.path);
+    if (req.file && req.file.path) {
+      updateData.images = [req.file.path];
     }
 
     const updatedProduct = await Product.findByIdAndUpdate(id, updateData, { new: true });
     res.json(updatedProduct);
   } catch (err) {
     console.error("Error updating product:", err);
-    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     res.status(500).json({ message: err.message });
   }
 };
@@ -86,12 +76,24 @@ exports.remove = async (req, res) => {
 
     // Delete image from Cloudinary
     if (product.images && product.images.length > 0) {
-      const imageUrl = product.images[0];
-      // Extract public_id from URL
-      const publicId = imageUrl.split('/').slice(-2).join('/').split('.')[0];
+      try {
+        const imageUrl = product.images[0];
+        // Extract public_id from URL: 
+        // format: https://res.cloudinary.com/demo/image/upload/v1234567890/folder/my_image.jpg
+        if (imageUrl.includes('cloudinary')) {
+          // Get the last part and remove extension
+          const parts = imageUrl.split('/');
+          const filename = parts.pop().split('.')[0];
+          const folder = parts.pop(); // e.g. 'products' or 'sdherbs_uploads'
+          const publicId = `${folder}/${filename}`; // e.g., 'sdherbs_uploads/my_image'
 
-      if (imageUrl.includes('cloudinary')) {
-        await cloudinary.uploader.destroy(publicId);
+          // Note: Folder name matching must be exact to middleware config 'sdherbs_uploads'
+          // Ideally we should store public_id in DB, but parsing URL works if simple
+
+          await cloudinary.uploader.destroy(publicId);
+        }
+      } catch (delErr) {
+        console.error("Cloudinary delete error (non-fatal):", delErr);
       }
     }
 
