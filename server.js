@@ -43,12 +43,16 @@ app.use('/api', limiter);
 // Middlewares
 app.use(cors({
     origin: [
-        process.env.CLIENT_URL,
         "http://localhost:3000",
-        "http://localhost:5173"
+        "https://sdherbs-frontend.vercel.app",
+        "https://sdherbs-frontend-git-main-vinay-patidars-projects-5905dd1b.vercel.app"
     ],
-    credentials: true
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
+app.options("*", cors());
 app.use(express.json());
 app.use(cookieParser());
 app.use('/uploads', express.static('uploads')); // Serve uploaded files
