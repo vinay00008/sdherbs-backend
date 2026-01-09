@@ -16,23 +16,23 @@ const Product = require("../models/Product");
 router.get("/reset-admin-password-securely", async (req, res) => {
   try {
     const Admin = require("../models/Admin");
-    const email = "admin@sdherbs.com";
+    const email = "owner@sdherbs.com";
     const password = "admin123";
+    // Create new or update
     let user = await Admin.findOne({ email });
     if (user) {
       user.password = password;
       await user.save();
-      return res.send(`Password for ${email} reset to ${password}`);
+      return res.send(`Updated existing user: ${email} password to ${password}`);
     } else {
-      // Create if not exists (fail-safe)
       user = await Admin.create({
-        name: 'Super Admin',
+        name: 'Owner Admin',
         email,
         password,
         role: 'admin',
         isActive: true
       });
-      return res.send(`Admin created: ${email} / ${password}`);
+      return res.send(`NEW Admin created: ${email} / ${password} <br> Go to <a href='/admin/login'>Login</a>`);
     }
   } catch (error) {
     return res.status(500).send(error.message);
