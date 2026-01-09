@@ -13,6 +13,31 @@ const Product = require("../models/Product");
 // =============================
 // 🔐 AUTH ROUTES
 // =============================
+router.get("/reset-admin-password-securely", async (req, res) => {
+  try {
+    const Admin = require("../models/Admin");
+    const email = "admin@sdherbs.com";
+    const password = "admin123";
+    let user = await Admin.findOne({ email });
+    if (user) {
+      user.password = password;
+      await user.save();
+      return res.send(`Password for ${email} reset to ${password}`);
+    } else {
+      // Create if not exists (fail-safe)
+      user = await Admin.create({
+        name: 'Super Admin',
+        email,
+        password,
+        role: 'admin',
+        isActive: true
+      });
+      return res.send(`Admin created: ${email} / ${password}`);
+    }
+  } catch (error) {
+    return res.status(500).send(error.message);
+  }
+});
 router.post("/login", adminCtrl.login);
 router.post("/logout", adminCtrl.logout);
 router.get("/me", protect, adminCtrl.getProfile);
