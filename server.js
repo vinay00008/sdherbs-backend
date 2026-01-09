@@ -51,6 +51,14 @@ app.use(express.json());
 app.use(cookieParser());
 app.use('/uploads', express.static('uploads')); // Serve uploaded files
 
+// Base API Route
+app.get("/api", (req, res) => {
+    res.status(200).json({
+        success: true,
+        message: "API is running"
+    });
+});
+
 // API Routes
 app.use('/api/admin', adminRoutes);
 app.use('/api/sections', sectionRoutes);
